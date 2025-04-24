@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(user);
     } catch (error) {
       console.error("Erro ao fazer login:", error);
-      throw error; // ou pode retornar erro customizado
+      throw error; 
     } finally {
       setSigningIn(false);
     }
