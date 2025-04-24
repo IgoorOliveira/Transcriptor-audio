@@ -2,9 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import App from "./App";
-import LoginPage from "./components/LoginPage";
+import LoginPage from "./components/pages/loginPage";
 import { AuthProvider } from "./hooks/useAuth";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/layout/protectedRoutes";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -18,7 +18,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             path="/*"
             element={
               <ProtectedRoute>
-                <App />
+                 <Route index element={<App />} />
+                 <Route path="*" element={<Navigate to="/" replace />} />
               </ProtectedRoute>
             }
           />
