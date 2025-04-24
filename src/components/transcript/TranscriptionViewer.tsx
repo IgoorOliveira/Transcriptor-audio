@@ -6,9 +6,13 @@ import { Summarization } from "./Summarization";
 import { SearchBar } from "./SearchBar";
 import { useTranscription } from "../../hooks/useTranscription";
 import { FileText, Sparkles, Bookmark } from "lucide-react";
+import { useTranscriptionStore } from "../../store/transcriptionStore"
 
 export const TranscriptionViewer: FC = () => {
+  const { transcript } = useTranscriptionStore(); 
   const { activeTab, setActiveTab } = useTranscription();
+
+  if (!transcript || transcript.length === 0) return null;
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

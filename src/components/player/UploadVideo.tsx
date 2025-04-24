@@ -1,10 +1,26 @@
 import { UploadIcon, VideoIcon, X } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useState, useCallback } from "react";
+import axios from "axios";
+import { useTranscriptionStore } from "../../store/transcriptionStore";
 
 export function UploadVideo() {
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const { setTranscript } = useTranscriptionStore();
+  
+  const handleTranscribe = async () => {
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    const resp = await axios.post('/transcribe', form, {
+      headers: form.getHeaders?.(),
+      responseType: 'json'
+    });
+    const segments: { time: string; text: string }[] = resp.data;
+    setTranscript(segments);
+    await axios.post('/history', { segments });
+  };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const selectedFile = acceptedFiles[0];
@@ -125,6 +141,17 @@ export function UploadVideo() {
           </>
         )}
       </div>
+
+      {file && (
+        <div className="w-full flex justify-center mt-4">
+          <button
+            onClick={handleTranscribe}
+            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+          >
+            Transcrever
+          </button>
+        </div>
+      )}
     </div>
   );
 }

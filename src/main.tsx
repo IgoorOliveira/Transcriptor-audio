@@ -6,6 +6,7 @@ import LoginPage from "./components/pages/loginPage";
 import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/layout/protectedRoutes";
 import "./index.css";
+import RegisterPage from "./components/pages/registerPage";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -13,6 +14,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           <Route
             path="/*"

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { Link } from "react-router-dom"
 
 export default function LoginPage() {
   const { signIn, signingIn } = useAuth();
@@ -51,6 +52,13 @@ export default function LoginPage() {
         >
           {signingIn ? "Entrando..." : "Entrar"}
         </button>
+
+        <p className="mt-4 text-sm text-center">
+            Não tem conta?{" "}
+          <Link to="/register" className="text-green-600 hover:underline">
+            Cadastre-se
+          </Link>
+       </p>
       </form>
     </div>
   );
