@@ -1,3 +1,4 @@
+// hooks/useAuth.ts
 import {
   createContext,
   useContext,
@@ -5,6 +6,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { getToken, setToken, clearToken } from "../utils";
 
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [signingIn, setSigningIn] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const token = getToken();
@@ -33,12 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api
         .get("/users/me")
         .then((response) => {
-          setUser(response.data);
+          setUser(response.data.user);
         })
         .catch(() => {
+          // Token inválido ou expirado
           clearToken();
           delete api.defaults.headers.common.Authorization;
           setUser(null);
+          navigate("/login");
         });
     }
   }, []);
@@ -48,12 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await api.post("/users/login", { email, password });
       const { token, user } = response.data;
+
       setToken(token);
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
       setUser(user);
+      navigate("/");
     } catch (error) {
       console.error("Erro ao fazer login:", error);
-      throw error; 
+      throw error;
     } finally {
       setSigningIn(false);
     }
@@ -63,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearToken();
     delete api.defaults.headers.common.Authorization;
     setUser(null);
+    navigate("/login"); 
   }
 
   return (

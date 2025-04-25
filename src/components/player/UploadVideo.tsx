@@ -14,7 +14,7 @@ export function UploadVideo() {
     const form = new FormData();
     form.append('file', file);
     const resp = await axios.post('/transcribe', form, {
-      headers: form.getHeaders?.(),
+      headers: {},
       responseType: 'json'
     });
     const segments: { time: string; text: string }[] = resp.data;
