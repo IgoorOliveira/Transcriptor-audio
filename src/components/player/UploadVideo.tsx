@@ -1,8 +1,8 @@
 import { UploadIcon, VideoIcon, X } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useState, useCallback } from "react";
-import axios from "axios";
 import { useTranscriptionStore } from "../../store/transcriptionStore";
+import { api } from "../../lib/api";
 
 export function UploadVideo() {
   const [preview, setPreview] = useState<string | null>(null);
@@ -13,13 +13,13 @@ export function UploadVideo() {
     if (!file) return;
     const form = new FormData();
     form.append('file', file);
-    const resp = await axios.post('/transcribe', form, {
+    const resp = await api.post('/api/transcribe', form, {
       headers: {},
       responseType: 'json'
     });
     const segments: { time: string; text: string }[] = resp.data;
     setTranscript(segments);
-    await axios.post('/history', { segments });
+    await api.post('/history', { segments });
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -60,7 +60,9 @@ export function UploadVideo() {
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
-      "video/*": [".mp4", ".mov", ".avi", ".mkv"],
+      "video/*": [".mp4", ".mov", ".avi", ".mkv", ".mp4a", ".mp4v"],
+      "audio/*": [".mp3", ".wav", ".ogg"],
+      "video/mp4": [".mp4"],
       "image/*": [".png", ".jpg", ".jpeg"],
     },
     maxSize: 100 * 1024 * 1024, // 100MB
