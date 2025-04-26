@@ -1,11 +1,14 @@
 import { create } from 'zustand';
-import { Conversation, ConversationType } from '../types/conversation';
+import { api } from '../lib/api';
+import { Conversation, ConversationType } from '../types/conversation.ts';
+
 
 interface ConversationsState {
   conversations: ReadonlyArray<Conversation>;
   sidebarOpen: boolean;
-  
-  createConversation: (title?: string, type?: ConversationType) => void;
+  loadConversations: () => Promise<void>;
+
+  createConversation: (title?: string, type?: string) => void;
   deleteConversation: (id: number) => void;
   setActiveConversation: (id: number) => void;
   updateConversationProgress: (id: number, progress: number) => void;
@@ -14,64 +17,63 @@ interface ConversationsState {
   getActiveConversation: () => Conversation | undefined;
 }
 
-const initialConversations: ReadonlyArray<Conversation> = [
-  { id: 1, title: "Entrevista com Carlos", date: "12 Abr", active: true, type: "video", progress: 100 },
-  { id: 2, title: "Reunião de projeto", date: "10 Abr", active: false, type: "audio", progress: 85 },
-  { id: 3, title: "Podcast episódio #42", date: "08 Abr", active: false, type: "audio", progress: 100 },
-  { id: 4, title: "Aula de marketing", date: "05 Abr", active: false, type: "video", progress: 72 },
-  { id: 5, title: "Palestra TED", date: "02 Abr", active: false, type: "video", progress: 100 },
-  { id: 6, title: "Discurso inaugural", date: "28 Mar", active: false, type: "audio", progress: 100 },
-];
-
 export const useConversationsStore = create<ConversationsState>((set, get) => ({
-  conversations: initialConversations,
+  conversations: [],
   sidebarOpen: true,
-  
-  createConversation: (title = "Nova transcrição", type = "video") => set((state) => {
-    const newId = Math.max(...state.conversations.map(c => c.id)) + 1;
+
+  loadConversations: async () => {
+    try {
+      const response = await api.get('users/history');
+      set({ conversations: response.data });
+    } catch (error) {
+      console.error('Erro ao carregar conversas:', error);
+    }
+  },
+
+  createConversation: (title = "Nova transcrição", type = "video") => {
     const currentDate = new Date();
     const formattedDate = `${currentDate.getDate()} ${['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][currentDate.getMonth()]}`;
-    
+
     const newConversation: Conversation = {
-      id: newId,
+      id: Date.now(),
       title,
       date: formattedDate,
       active: true,
-      type,
+      type: type as ConversationType,
       progress: 0
     };
-    
-    return {
+
+    set((state) => ({
       conversations: [
         newConversation,
         ...state.conversations.map(c => ({ ...c, active: false }))
-      ] as ReadonlyArray<Conversation>
-    };
-  }),
-  
+      ]
+    }));
+  },
+
   deleteConversation: (id) => set((state) => ({
-    conversations: state.conversations.filter(conv => conv.id !== id) as ReadonlyArray<Conversation>
+    conversations: state.conversations.filter(conv => conv.id !== id)
   })),
-  
+
   setActiveConversation: (id) => set((state) => ({
     conversations: state.conversations.map(conv => ({
       ...conv,
       active: conv.id === id
-    })) as ReadonlyArray<Conversation>
+    }))
   })),
-  
+
   updateConversationProgress: (id, progress) => set((state) => ({
     conversations: state.conversations.map(conv => 
       conv.id === id ? { ...conv, progress } : conv
-    ) as ReadonlyArray<Conversation>
+    )
   })),
 
   updateConversationTitle: (id, title) => set((state) => ({
     conversations: state.conversations.map(conv => 
       conv.id === id ? { ...conv, title } : conv
-    ) as ReadonlyArray<Conversation>
+    )
   })),
-  
+
   toggleSidebar: () => set((state) => ({
     sidebarOpen: !state.sidebarOpen
   })),

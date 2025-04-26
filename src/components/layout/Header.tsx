@@ -5,9 +5,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Bell, List, User, Settings, HelpCircle, LogOut, Zap } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 export const Header: FC = () => {
   const { toggleSidebar } = useConversationsStore();
+  const { user } = useAuth();
 
   return (
     <header className="bg-background border-b border-muted/20 sticky top-0 z-10">
@@ -49,7 +51,7 @@ export const Header: FC = () => {
                   <AvatarImage src="https://github.com/shadcn.png" />
                   <AvatarFallback>US</AvatarFallback>
                 </Avatar>
-                <span className="hidden md:inline">Usuário</span>
+                <span className="hidden md:inline">{user ? user.name : 'Usuário'}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

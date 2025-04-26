@@ -1,4 +1,3 @@
-// hooks/useAuth.ts
 import {
   createContext,
   useContext,
@@ -11,6 +10,7 @@ import { api } from "../lib/api";
 import { getToken, setToken, clearToken } from "../utils";
 
 interface User {
+  _id: string;
   name: string;
   email: string;
 }
@@ -30,23 +30,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
-      api
-        .get("/users/me")
-        .then((response) => {
-          setUser(response.data.user);
-        })
-        .catch(() => {
-          // Token inválido ou expirado
-          clearToken();
-          delete api.defaults.headers.common.Authorization;
-          setUser(null);
-          navigate("/login");
-        });
-    }
-  }, []);
+  const token = getToken();
+  if (token) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+    api
+      .get("/users/me")
+      .then((response) => {
+        setUser(response.data);
+      })
+      .catch(() => {
+        clearToken();
+        delete api.defaults.headers.common.Authorization;
+        setUser(null);
+        navigate("/login");
+      });
+  }
+}, []);
 
   async function signIn(email: string, password: string) {
     setSigningIn(true);

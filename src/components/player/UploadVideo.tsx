@@ -19,7 +19,7 @@ export function UploadVideo() {
     });
     const segments: { time: string; text: string }[] = resp.data;
     setTranscript(segments);
-    await api.post('/history', { segments });
+    await api.post('/users/history', { segments });
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
