@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
 import { useConversationsStore } from '../../store/conversationStore';
@@ -6,8 +6,29 @@ import { useChatStore } from '../../store/chatStore';
 import { Home, FileText, Settings, Plus, Video, Mic } from 'lucide-react';
 
 export const Sidebar: FC = () => {
-  const { conversations, createConversation, setActiveConversation } = useConversationsStore();
+  const { 
+    conversations, 
+    createConversation, 
+    setActiveConversation, 
+    loadConversations 
+  } = useConversationsStore();
   const { addSystemMessage } = useChatStore();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setLoading(true);
+        await loadConversations();
+      } catch (error) {
+        console.error('Erro ao buscar histórico:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
+  }, [loadConversations]);
 
   const handleCreateConversation = () => {
     createConversation();
@@ -34,37 +55,43 @@ export const Sidebar: FC = () => {
         <div className="flex-1 overflow-y-auto px-2">
           <h3 className="px-4 py-2 text-sm font-medium text-muted-foreground">Histórico Recente</h3>
           <div className="space-y-1">
-            {conversations.map(conv => (
-              <div
-                key={conv.id}
-                onClick={() => handleSwitchConversation(conv.id)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors ${
-                  conv.active 
-                    ? "bg-primary/10 text-primary" 
-                    : "hover:bg-muted/50"
-                }`}
-              >
-                <div className="flex-shrink-0">
-                  {conv.type === "video" ? (
-                    <Video size={16} className="text-muted-foreground" />
-                  ) : (
-                    <Mic size={16} className="text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{conv.title}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{conv.date}</span>
-                    {conv.progress < 100 && (
-                      <span className="text-xs text-muted-foreground">{conv.progress}%</span>
+            {loading ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">Carregando histórico...</div>
+            ) : conversations.length > 0 ? (
+              conversations.map(conv => (
+                <div
+                  key={conv.id}
+                  onClick={() => handleSwitchConversation(conv.id)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors ${
+                    conv.active 
+                      ? "bg-primary/10 text-primary" 
+                      : "hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex-shrink-0">
+                    {conv.type === "video" ? (
+                      <Video size={16} className="text-muted-foreground" />
+                    ) : (
+                      <Mic size={16} className="text-muted-foreground" />
                     )}
                   </div>
-                  {conv.progress < 100 && (
-                    <Progress value={conv.progress} className="h-1 mt-1" />
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{conv.title}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{conv.date}</span>
+                      {conv.progress < 100 && (
+                        <span className="text-xs text-muted-foreground">{conv.progress}%</span>
+                      )}
+                    </div>
+                    {conv.progress < 100 && (
+                      <Progress value={conv.progress} className="h-1 mt-1" />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum histórico encontrado</div>
+            )}
           </div>
         </div>
 
