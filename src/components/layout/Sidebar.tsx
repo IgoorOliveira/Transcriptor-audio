@@ -70,17 +70,17 @@ export const Sidebar: FC = () => {
 
         <div className="p-4 border-t border-muted/20">
           <nav className="space-y-1">
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50">
+            <a key="home" href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50">
               <Home size={16} /> Início
             </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50">
+            <a key="docs" href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50">
               <FileText size={16} /> Documentação
             </a>
-            <a href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50">
+            <a key="settings" href="#" className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-muted/50">
               <Settings size={16} /> Configurações
             </a>
           </nav>
-        </div>
+        </div>  
       </div>
     </aside>
   );

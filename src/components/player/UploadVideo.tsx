@@ -1,6 +1,6 @@
 import { UploadIcon, VideoIcon, MusicIcon, X, Loader2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTranscriptionStore } from "../../store/transcriptionStore";
 import { useConversationsStore } from "../../store/conversationStore";
 import { api } from "../../lib/api";
@@ -11,6 +11,7 @@ export function UploadVideo() {
   const [fileType, setFileType] = useState<"video" | "audio" | "image" | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const progressRef = useRef(0);
   const { setTranscript } = useTranscriptionStore();
   const { createConversation, loadConversations, updateConversationProgress } = useConversationsStore();
   
@@ -23,13 +24,20 @@ export function UploadVideo() {
       const newConversationId = Date.now();
       createConversation(file.name, fileType === "audio" ? "audio" : "video");
       
+      // Usando ref para rastrear o progresso de maneira segura
+      progressRef.current = 0;
+      
       const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          const newProgress = prev + (100 - prev) * 0.1;
-          const progressValue = Math.min(newProgress, 95);
-          updateConversationProgress(newConversationId, Math.round(progressValue));
-          return progressValue;
-        });
+        // Calculando o novo progresso com base no valor atual da ref
+        const newProgress = progressRef.current + (100 - progressRef.current) * 0.1;
+        const progressValue = Math.min(newProgress, 95);
+        
+        // Atualizando a ref e o estado local
+        progressRef.current = progressValue;
+        setProgress(progressValue);
+        
+        // Atualizando o estado global em uma operação separada
+        updateConversationProgress(newConversationId, Math.round(progressValue));
       }, 500);
       
       const form = new FormData();
@@ -59,12 +67,14 @@ export function UploadVideo() {
       setTimeout(() => {
         setIsTranscribing(false);
         setProgress(0);
+        progressRef.current = 0;
       }, 500);
       
     } catch (error) {
       console.error("Erro na transcrição:", error);
       setIsTranscribing(false);
       setProgress(0);
+      progressRef.current = 0;
     }
   };
 
