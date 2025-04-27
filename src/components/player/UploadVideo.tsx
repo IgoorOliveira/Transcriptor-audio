@@ -1,25 +1,71 @@
-import { UploadIcon, VideoIcon, X } from "lucide-react";
+import { UploadIcon, VideoIcon, MusicIcon, X, Loader2 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { useState, useCallback } from "react";
 import { useTranscriptionStore } from "../../store/transcriptionStore";
+import { useConversationsStore } from "../../store/conversationStore";
 import { api } from "../../lib/api";
 
 export function UploadVideo() {
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [fileType, setFileType] = useState<"video" | "audio" | "image" | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [progress, setProgress] = useState(0);
   const { setTranscript } = useTranscriptionStore();
+  const { createConversation, loadConversations, updateConversationProgress } = useConversationsStore();
   
   const handleTranscribe = async () => {
     if (!file) return;
-    const form = new FormData();
-    form.append('file', file);
-    const resp = await api.post('/api/transcribe', form, {
-      headers: {},
-      responseType: 'json'
-    });
-    const segments: { time: string; text: string }[] = resp.data;
-    setTranscript(segments);
-    await api.post('/users/history', { segments });
+    
+    try {
+      setIsTranscribing(true);
+      
+      const newConversationId = Date.now();
+      createConversation(file.name, fileType === "audio" ? "audio" : "video");
+      
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          const newProgress = prev + (100 - prev) * 0.1;
+          const progressValue = Math.min(newProgress, 95);
+          updateConversationProgress(newConversationId, Math.round(progressValue));
+          return progressValue;
+        });
+      }, 500);
+      
+      const form = new FormData();
+      form.append('file', file);
+      
+      const resp = await api.post('/api/transcribe', form, {
+        headers: {},
+        responseType: 'json'
+      });
+      
+      clearInterval(progressInterval);
+      setProgress(100);
+      updateConversationProgress(newConversationId, 100);
+      
+      const segments = resp.data;
+      setTranscript(segments);
+      
+      await api.post('/users/history', { 
+        title: file.name,
+        url: preview || "",
+        type: fileType === "audio" ? "audio" : "video",
+        segments
+      });
+      
+      loadConversations();
+      
+      setTimeout(() => {
+        setIsTranscribing(false);
+        setProgress(0);
+      }, 500);
+      
+    } catch (error) {
+      console.error("Erro na transcrição:", error);
+      setIsTranscribing(false);
+      setProgress(0);
+    }
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -28,6 +74,7 @@ export function UploadVideo() {
       setFile(selectedFile);
 
       if (selectedFile.type.startsWith("video/")) {
+        setFileType("video");
         const video = document.createElement("video");
         const url = URL.createObjectURL(selectedFile);
 
@@ -51,7 +98,11 @@ export function UploadVideo() {
             }, "image/jpeg");
           });
         });
+      } else if (selectedFile.type.startsWith("audio/")) {
+        setFileType("audio");
+        setPreview(null);
       } else if (selectedFile.type.startsWith("image/")) {
+        setFileType("image");
         setPreview(URL.createObjectURL(selectedFile));
       }
     }
@@ -60,18 +111,31 @@ export function UploadVideo() {
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
-      "video/*": [".mp4", ".mov", ".avi", ".mkv", ".mp4a", ".mp4v"],
-      "audio/*": [".mp3", ".wav", ".ogg"],
+      "video/*": [".mp4", ".mov", ".avi", ".mkv", ".mp4v"],
+      "audio/*": [".mp3", ".wav", ".ogg", ".mp4a"],
       "video/mp4": [".mp4"],
       "image/*": [".png", ".jpg", ".jpeg"],
     },
-    maxSize: 100 * 1024 * 1024, // 100MB
+    maxSize: 100 * 1024 * 1024,
+    disabled: isTranscribing
   });
 
   const removeFile = () => {
     if (preview) URL.revokeObjectURL(preview);
     setPreview(null);
     setFile(null);
+    setFileType(null);
+  };
+
+  const getFileTypeIcon = () => {
+    switch (fileType) {
+      case "audio":
+        return <MusicIcon className="text-white w-8 h-8" />;
+      case "video":
+        return <VideoIcon className="text-white w-8 h-8" />;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -79,17 +143,19 @@ export function UploadVideo() {
       <div
         {...getRootProps()}
         className={`w-full h-60 flex justify-center items-center flex-col rounded-lg cursor-pointer relative overflow-hidden transition-all ${
-          preview
+          isTranscribing ? "pointer-events-none" : ""
+        } ${
+          file
             ? "border border-solid bg-background"
             : "border border-dashed hover:border-primary/50"
         }`}
       >
         <input {...getInputProps()} />
 
-        {preview && file ? (
+        {file ? (
           <>
             <div className="absolute inset-0 flex items-center justify-center bg-black/5">
-              {file.type.startsWith("video/") ? (
+              {fileType === "video" && preview && (
                 <>
                   <img
                     src={preview}
@@ -102,14 +168,61 @@ export function UploadVideo() {
                     </div>
                   </div>
                 </>
-              ) : (
+              )}
+              {fileType === "audio" && (
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center">
+                    <MusicIcon className="text-white w-8 h-8" />
+                  </div>
+                </div>
+              )}
+              {fileType === "image" && preview && (
                 <img
                   src={preview}
                   alt="Preview"
                   className="w-full h-full object-contain"
                 />
               )}
+              
+              {isTranscribing && (
+                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
+                  <div className="relative w-32 h-32 mb-4">
+                    <svg className="absolute inset-0" viewBox="0 0 100 100">
+                      <circle 
+                        cx="50" cy="50" r="40" 
+                        fill="none" 
+                        stroke="#1e293b" 
+                        strokeWidth="8" 
+                      />
+                      <circle 
+                        cx="50" cy="50" r="40" 
+                        fill="none" 
+                        stroke="#3b82f6" 
+                        strokeWidth="8" 
+                        strokeLinecap="round"
+                        strokeDasharray="251.2"
+                        strokeDashoffset={251.2 - (251.2 * progress) / 100}
+                        className="transform -rotate-90 origin-center transition-all duration-300 ease-out"
+                      />
+                    </svg>
+                    
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center">
+                        {getFileTypeIcon()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center text-white">
+                    <p className="text-lg font-medium mb-1">Transcrevendo...</p>
+                    <p className="text-sm text-white/80">
+                      {progress.toFixed(0)}% - Processando seu arquivo
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
+            
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
               <div className="flex justify-between items-center">
                 <div className="text-white">
@@ -118,16 +231,18 @@ export function UploadVideo() {
                     {(file.size / (1024 * 1024)).toFixed(2)} MB
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFile();
-                  }}
-                  className="p-2 rounded-full hover:bg-white/20 text-white"
-                >
-                  <X size={18} />
-                </button>
+                {!isTranscribing && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile();
+                    }}
+                    className="p-2 rounded-full hover:bg-white/20 text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -135,22 +250,30 @@ export function UploadVideo() {
           <>
             <UploadIcon className="mb-4 w-10 h-10 text-muted-foreground" />
             <span className="font-medium text-center">
-              Arraste e solte seu vídeo aqui, ou clique para selecionar
+              Arraste e solte seu vídeo ou áudio aqui, ou clique para selecionar
             </span>
             <small className="text-muted-foreground mt-2 text-center">
-              Formatos suportados: MP4, MOV, AVI (até 100MB)
+              Formatos suportados: MP4, MOV, AVI, MP3, WAV (até 100MB)
             </small>
           </>
         )}
       </div>
 
-      {file && (
+      {file && !isTranscribing && (
         <div className="w-full flex justify-center mt-4">
           <button
             onClick={handleTranscribe}
-            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+            disabled={isTranscribing}
+            className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
-            Transcrever
+            {isTranscribing ? (
+              <>
+                <Loader2 className="animate-spin mr-2" size={18} />
+                Transcrevendo...
+              </>
+            ) : (
+              "Transcrever"
+            )}
           </button>
         </div>
       )}
