@@ -51,7 +51,7 @@ export default function RegisterPage() {
     setIsVisible(true);
   }, []);
 
-  async function handleRegister(e) {
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -61,7 +61,7 @@ export default function RegisterPage() {
       navigate("/login", { replace: true });
     } catch (err) {
       setError(
-        err.response?.data?.error || "Erro ao cadastrar. Tente novamente."
+        (err instanceof Error ? err.message : String(err)) || "Erro ao cadastrar usuário. Verifique se o e-mail já está em uso ou se os dados estão corretos."
       );
     } finally {
       setLoading(false);

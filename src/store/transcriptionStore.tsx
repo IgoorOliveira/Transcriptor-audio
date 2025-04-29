@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { api } from '../lib/api';
 import { TranscriptLine, TranscriptionTab } from '../types/transcription';
 
 interface TranscriptionState {
@@ -8,13 +9,16 @@ interface TranscriptionState {
   activeTab: TranscriptionTab;
   playbackSpeed: number;
   autoScroll: boolean;
-  
+  isLoading: boolean;
+
   setTranscript: (transcript: ReadonlyArray<TranscriptLine>) => void;
   setCurrentVideoTime: (time: number) => void;
   setSearchQuery: (query: string) => void;
   setActiveTab: (tab: TranscriptionTab) => void;
   setPlaybackSpeed: (speed: number) => void;
   setAutoScroll: (autoScroll: boolean) => void;
+
+  fetchTranscriptFromApi: (id: number | string) => Promise<void>;
 }
 
 const initialTranscript: ReadonlyArray<TranscriptLine> = [
@@ -37,6 +41,7 @@ export const useTranscriptionStore = create<TranscriptionState>((set) => ({
   activeTab: 'transcription',
   playbackSpeed: 1,
   autoScroll: true,
+  isLoading: false,
 
   setTranscript: (transcript) => set({ transcript }),
   setCurrentVideoTime: (time) => set({ currentVideoTime: time }),
@@ -44,4 +49,35 @@ export const useTranscriptionStore = create<TranscriptionState>((set) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setAutoScroll: (autoScroll) => set({ autoScroll }),
+
+  fetchTranscriptFromApi: async (id) => {
+    try {
+      set({ isLoading: true });
+      const response = await api.get(`/api/transcription/${id}`);
+      
+      if (response.data && response.data.text) {
+        const lines = Array.isArray(response.data.text) 
+          ? response.data.text 
+          : response.data.text.split('\n').filter(line => line.trim() !== '');
+        
+        const newTranscript: TranscriptLine[] = lines.map((line: string, index: number) => {
+          const seconds = index * 5;
+          const minutes = Math.floor(seconds / 60);
+          const remainingSeconds = seconds % 60;
+          const time = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+          
+          return { 
+            time,
+            text: typeof line === 'string' ? line : line.text || ''
+          };
+        });
+        
+        set({ transcript: newTranscript });
+      }
+    } catch (error) {
+      console.error('Erro ao buscar transcrição:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
 }));

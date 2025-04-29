@@ -9,7 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 
 export const Header: FC = () => {
   const { toggleSidebar } = useConversationsStore();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
 
   return (
     <header className="bg-background border-b border-muted/20 sticky top-0 z-10">
@@ -68,7 +68,7 @@ export const Header: FC = () => {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-red-500">
-                <LogOut size={16} className="mr-2" /> Sair
+                <LogOut size={16} className="mr-2" onClick={signOut} /> Sair
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

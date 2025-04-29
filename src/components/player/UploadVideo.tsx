@@ -12,8 +12,14 @@ export function UploadVideo() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(0);
+  
   const { setTranscript } = useTranscriptionStore();
-  const { createConversation, loadConversations, updateConversationProgress } = useConversationsStore();
+  const { 
+    createConversation, 
+    loadConversations, 
+    updateConversationProgress,
+    setActiveConversation 
+  } = useConversationsStore();
   
   const handleTranscribe = async () => {
     if (!file) return;
@@ -21,22 +27,18 @@ export function UploadVideo() {
     try {
       setIsTranscribing(true);
       
-      const newConversationId = Date.now();
-      createConversation(file.name, fileType === "audio" ? "audio" : "video");
+      // Criar nova conversa e obter o ID
+      const newConversationId = createConversation(file.name, fileType === "audio" ? "audio" : "video");
       
-      // Usando ref para rastrear o progresso de maneira segura
       progressRef.current = 0;
       
       const progressInterval = setInterval(() => {
-        // Calculando o novo progresso com base no valor atual da ref
         const newProgress = progressRef.current + (100 - progressRef.current) * 0.1;
         const progressValue = Math.min(newProgress, 95);
         
-        // Atualizando a ref e o estado local
         progressRef.current = progressValue;
         setProgress(progressValue);
         
-        // Atualizando o estado global em uma operação separada
         updateConversationProgress(newConversationId, Math.round(progressValue));
       }, 500);
       
@@ -47,22 +49,35 @@ export function UploadVideo() {
         headers: {},
         responseType: 'json'
       });
-      
+      console.log("Resposta da transcrição:", resp.data);
       clearInterval(progressInterval);
       setProgress(100);
       updateConversationProgress(newConversationId, 100);
       
       const segments = resp.data;
-      setTranscript(segments);
       
+      // Formatar segmentos para o formato TranscriptLine
+      const formattedTranscript = segments.map((segment: any) => ({
+        time: segment.time || "00:00",
+        text: segment.text || segment
+      }));
+      
+      setTranscript(formattedTranscript);
+      
+      // Salvar a transcrição e metadados no histórico
       await api.post('/users/history', { 
+        id: newConversationId,
         title: file.name,
         url: preview || "",
         type: fileType === "audio" ? "audio" : "video",
         segments
       });
       
-      loadConversations();
+      // Defina a conversa recém-criada como ativa
+      setActiveConversation(newConversationId);
+      
+      // Recarregar lista de conversas
+      await loadConversations();
       
       setTimeout(() => {
         setIsTranscribing(false);

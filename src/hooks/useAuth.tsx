@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(token);
       api.defaults.headers.common.Authorization = `Bearer ${token}`;
       setUser(user);
-      navigate("/");
+      navigate("/app");
     } catch (error) {
       console.error("Erro ao fazer login:", error);
       throw error;
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearToken();
     delete api.defaults.headers.common.Authorization;
     setUser(null);
-    navigate("/login"); 
+    navigate("/"); 
   }
 
   return (
