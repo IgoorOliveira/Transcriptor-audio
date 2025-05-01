@@ -103,7 +103,7 @@ export const useConversationsStore = create<ConversationsState>((set, get) => ({
   const state = get();
   const conversation = state.conversations.find(conv => conv.id === id);
 
-  if (conversation && typeof conversation.id === 'string') { 
+  if (conversation) { 
     const { fetchTranscriptFromApi } = useTranscriptionStore.getState();
     fetchTranscriptFromApi(id);
   }

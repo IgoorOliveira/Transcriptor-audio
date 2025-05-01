@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { api } from '../lib/api';
 import { TranscriptLine, TranscriptionTab } from '../types/transcription';
 
+
 interface TranscriptionState {
   transcript: ReadonlyArray<TranscriptLine>;
   currentVideoTime: number;
