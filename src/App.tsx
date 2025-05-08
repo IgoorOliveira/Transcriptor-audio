@@ -9,9 +9,10 @@ import { PlayerControls } from './components/player/PlayerControls';
 import { TranscriptionViewer } from './components/transcript/TranscriptionViewer';
 import { ChatWindow } from './components/chat/ChatWindow';
 import { useConversationsStore } from './store/conversationStore';
-import { BookOpen, Download, Sparkles, MessageSquare } from 'lucide-react';
+import { BookOpen, Sparkles, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from './components/ui/tooltip';
-import "./index.css"
+import "./index.css";
+import { BrailleExportButton } from './components/transcript/BrailleExportButton';
 
 const App: FC = () => {
   const { sidebarOpen } = useConversationsStore();
@@ -40,18 +41,7 @@ const App: FC = () => {
                       <CardDescription>Faça upload do seu vídeo e visualize a transcrição</CardDescription>
                     </div>
                     <div className="flex gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                              <Download size={16} />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Exportar transcrição</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <BrailleExportButton />
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
