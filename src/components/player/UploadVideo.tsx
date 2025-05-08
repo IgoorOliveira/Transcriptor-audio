@@ -27,7 +27,6 @@ export function UploadVideo() {
     try {
       setIsTranscribing(true);
       
-      // Criar nova conversa e obter o ID
       const newConversationId = createConversation(file.name, fileType === "audio" ? "audio" : "video");
       
       progressRef.current = 0;
@@ -54,29 +53,36 @@ export function UploadVideo() {
       setProgress(100);
       updateConversationProgress(newConversationId, 100);
       
-      const segments = resp.data;
+      const segments = Array.isArray(resp.data) ? resp.data : 
+                      (resp.data && resp.data.segments ? resp.data.segments : 
+                      [{ time: "00:00", text: typeof resp.data === 'string' ? resp.data : JSON.stringify(resp.data) }]);
       
-      // Formatar segmentos para o formato TranscriptLine
       const formattedTranscript = segments.map((segment: any) => ({
         time: segment.time || "00:00",
-        text: segment.text || segment
+        text: segment.text || (typeof segment === 'string' ? segment : JSON.stringify(segment))
       }));
       
       setTranscript(formattedTranscript);
       
-      // Salvar a transcrição e metadados no histórico
-      await api.post('/users/history', { 
-        id: newConversationId,
-        title: file.name,
-        url: preview || "",
-        type: fileType === "audio" ? "audio" : "video",
-        segments
-      });
+      const historyId = resp.data && resp.data.historyId ? resp.data.historyId : null;
       
-      // Defina a conversa recém-criada como ativa
+      if (!historyId) {
+        // Salvar a transcrição e metadados no histórico
+        try {
+          await api.post('/users/history', { 
+            id: newConversationId,
+            title: file.name,
+            url: preview || "",
+            type: fileType === "audio" ? "audio" : "video",
+            segments: formattedTranscript
+          });
+        } catch (historyError) {
+          console.warn("Erro ao salvar histórico, mas a transcrição foi concluída:", historyError);
+        }
+      }
+      
       setActiveConversation(newConversationId);
       
-      // Recarregar lista de conversas
       await loadConversations();
       
       setTimeout(() => {
