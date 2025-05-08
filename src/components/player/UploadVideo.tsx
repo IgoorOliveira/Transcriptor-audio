@@ -81,9 +81,10 @@ export function UploadVideo() {
         }
       }
       
+      await loadConversations();
       setActiveConversation(newConversationId);
       
-      await loadConversations();
+      
       
       setTimeout(() => {
         setIsTranscribing(false);

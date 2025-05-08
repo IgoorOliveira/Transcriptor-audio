@@ -12,7 +12,6 @@ export const MobileSidebar: FC = () => {
 
   const handleSwitchConversation = (id: number) => {
     setActiveConversation(id);
-    // Mensagem de boas-vindas para a nova conversa ativa
     const conversation = conversations.find(c => c.id === id);
     if (conversation) {
       addSystemMessage(`Transcrição "${conversation.title}" carregada. Como posso ajudar?`);
