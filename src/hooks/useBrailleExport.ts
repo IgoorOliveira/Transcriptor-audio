@@ -17,15 +17,12 @@ export function useBrailleExport() {
     try {
       setIsExporting(true);
 
-      const response = await fetch(
-        `${api.defaults.baseURL}/api/transcription/${id}/braille?enhanced=${useEnhanced}`
+      const response = await api.get(
+        `/api/transcription/${id}/braille?enhanced=${useEnhanced}`,
+        { responseType: "blob" }
       );
 
-      if (!response.ok) {
-        throw new Error("Falha ao baixar o arquivo Braille");
-      }
-
-      const blob = await response.blob();
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
 
