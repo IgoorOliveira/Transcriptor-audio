@@ -9,9 +9,13 @@ import {
   Search,
   Clock,
   Loader2,
+  Wand2,
+  FileText,
+  RefreshCw,
 } from "lucide-react";
 import { useTranscriptionStore } from "@/store/transcriptionStore";
 import { useConversationsStore } from "@/store/conversationStore";
+import { useChatStore } from "@/store/chatStore";
 import { api } from "@/lib/api";
 import {
   Sheet,
@@ -27,6 +31,13 @@ import {
   TabsContent,
 } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Summarization: FC = () => {
   const {
@@ -38,12 +49,15 @@ export const Summarization: FC = () => {
   } = useTranscriptionStore();
 
   const { getActiveConversation } = useConversationsStore();
+  const { sendMessage, addSystemMessage } = useChatStore();
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("summary");
   const [copied, setCopied] = useState(false);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [filterText, setFilterText] = useState("");
+  const [enhancingTranscription, setEnhancingTranscription] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const defaultText = "Não foi possível obter sumário";
   const fullTranscription =
@@ -65,10 +79,11 @@ export const Summarization: FC = () => {
   };
 
   const fetchSummary = async () => {
-    if (!activeTranscriptionId || summary || loadingSummary) return;
+    if (!activeTranscriptionId || loadingSummary) return;
 
     try {
       setLoadingSummary(true);
+      setErrorMessage(null);
       const response = await api.get(
         `/api/transcription/${activeTranscriptionId}/summary`
       );
@@ -77,9 +92,47 @@ export const Summarization: FC = () => {
       }
     } catch (error) {
       console.error("Erro ao buscar resumo:", error);
+      setErrorMessage("Falha ao gerar o resumo. Tente novamente.");
     } finally {
       setLoadingSummary(false);
     }
+  };
+
+  const enhanceTranscription = async () => {
+    if (!activeTranscriptionId || enhancingTranscription) return;
+
+    try {
+      setEnhancingTranscription(true);
+      const response = await api.get(
+        `/api/transcription/${activeTranscriptionId}/enhance`
+      );
+      
+      if (response.data?.segments) {
+        useTranscriptionStore.getState().setTranscript(response.data.segments);
+        addSystemMessage("Transcrição aprimorada com sucesso!");
+      }
+    } catch (error) {
+      console.error("Erro ao aprimorar transcrição:", error);
+      addSystemMessage("Não foi possível aprimorar a transcrição. Tente novamente mais tarde.");
+    } finally {
+      setEnhancingTranscription(false);
+    }
+  };
+
+  const exportToBraille = async () => {
+    if (!activeTranscriptionId) return;
+    
+    try {
+      window.open(`/api/transcription/${activeTranscriptionId}/braille`, '_blank');
+    } catch (error) {
+      console.error("Erro ao exportar para braille:", error);
+      addSystemMessage("Não foi possível exportar para braille. Tente novamente mais tarde.");
+    }
+  };
+
+  const sendToChat = (text: string) => {
+    sendMessage(text);
+    setIsOpen(false);
   };
 
   useEffect(() => {
@@ -93,6 +146,10 @@ export const Summarization: FC = () => {
       fetchSummary();
     }
   }, [isOpen, activeTab, summary, loadingSummary, activeTranscriptionId]);
+
+  useEffect(() => {
+    setErrorMessage(null);
+  }, [activeTranscriptionId]);
 
   const handleFilterChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -109,6 +166,24 @@ export const Summarization: FC = () => {
         </div>
       );
     }
+
+    if (errorMessage) {
+      return (
+        <div className="py-4 text-center">
+          <p className="text-sm text-red-500 mb-2">{errorMessage}</p>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={fetchSummary}
+            className="gap-2"
+          >
+            <RefreshCw size={14} />
+            Tentar novamente
+          </Button>
+        </div>
+      );
+    }
+
     return (
       <p className="text-sm text-muted-foreground">
         {summary || defaultText}
@@ -168,29 +243,61 @@ export const Summarization: FC = () => {
         {filteredTranscript.map((segment, index) => (
           <div
             key={index}
-            className="flex hover:bg-muted/10 p-1 rounded"
+            className="flex hover:bg-muted/10 p-1 rounded group"
           >
             <span className="text-sm font-medium text-muted-foreground mr-3 min-w-[60px]">
               {segment.time || "--:--"}
             </span>
             <p className="text-sm flex-1">{segment.text}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 h-6 w-6"
+              onClick={() => sendToChat(`Sobre "${segment.text}"`)}
+            >
+              <MessageSquare size={12} />
+            </Button>
           </div>
         ))}
       </div>
     );
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="bg-muted/10 p-4 rounded-lg border border-muted/20">
-        <h3 className="font-medium mb-2 flex items-center gap-2">
-          <MessageSquare size={16} /> Resumo Executivo
-        </h3>
-        {renderSummaryContent()}
-        {renderTranscriptPreview()}
-      </div>
-
-      <div className="flex justify-end">
+  const renderActionButtons = () => (
+    <div className="flex justify-between">
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={enhanceTranscription}
+        disabled={enhancingTranscription || !activeTranscriptionId}
+      >
+        {enhancingTranscription ? (
+          <Loader2 size={14} className="animate-spin" />
+        ) : (
+          <Wand2 size={14} />
+        )}
+        Aprimorar transcrição
+      </Button>
+      
+      <div className="flex gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-2">
+              <FileText size={14} />
+              Exportar
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={exportToBraille}>
+              Exportar para Braille
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => copyToClipboard(fullTranscription)}>
+              Copiar texto
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
         <Button
           variant="outline"
           size="sm"
@@ -200,6 +307,27 @@ export const Summarization: FC = () => {
           <ExternalLink size={14} /> Expandir sumário
         </Button>
       </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-muted/10 p-4 rounded-lg border border-muted/20">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-medium flex items-center gap-2">
+            <MessageSquare size={16} /> Resumo Executivo
+          </h3>
+          {!summary && !loadingSummary && !errorMessage && activeTranscriptionId && (
+            <Badge variant="outline" className="cursor-pointer" onClick={fetchSummary}>
+              Gerar
+            </Badge>
+          )}
+        </div>
+        {renderSummaryContent()}
+        {renderTranscriptPreview()}
+      </div>
+
+      {renderActionButtons()}
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent
@@ -267,9 +395,30 @@ export const Summarization: FC = () => {
                     </p>
                   </div>
                 </div>
+              ) : errorMessage ? (
+                <div className="flex flex-col items-center justify-center h-full p-4">
+                  <p className="text-red-500 mb-4">{errorMessage}</p>
+                  <Button onClick={fetchSummary} className="gap-2">
+                    <RefreshCw size={16} />
+                    Tentar novamente
+                  </Button>
+                </div>
               ) : (
                 <div className="prose prose-sm max-w-none dark:prose-invert p-4 flex-1">
                   {summary || defaultText}
+                  {summary && (
+                    <div className="mt-4 flex justify-end">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="gap-2"
+                        onClick={() => sendToChat("Elabore mais sobre os pontos deste resumo")}
+                      >
+                        <MessageSquare size={14} />
+                        Perguntar sobre o resumo
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
@@ -293,6 +442,25 @@ export const Summarization: FC = () => {
               <div className="flex-1 overflow-auto p-4">
                 {renderFullTranscript()}
               </div>
+
+              {transcript && transcript.length > 0 && (
+                <div className="p-4 border-t">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2"
+                    onClick={enhanceTranscription}
+                    disabled={enhancingTranscription}
+                  >
+                    {enhancingTranscription ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Wand2 size={14} />
+                    )}
+                    Aprimorar transcrição
+                  </Button>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </SheetContent>
